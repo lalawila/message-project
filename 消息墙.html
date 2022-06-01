@@ -1,0 +1,364 @@
+<!-- <textarea class="input-content">内容</textarea>
+<button onclick="publish()">发布</button>
+<input class="post-id" type="text" placeholder="帖子 ID" />
+<button onclick="update()">更新</button>
+<button onclick="remove()">删除</button> -->
+
+<div class="container">
+    <div class="post input-dialog" hidden>
+        <textarea class="input-content" placeholder="请输入消息"></textarea>
+        <div class="bottom">
+            <div class="buttons">
+                <div class="button confirm" onclick="confirm()">确认</div>
+                <div class="button cancel" onclick="cancel()">取消</div>
+            </div>
+        </div>
+    </div>
+    <div class="posts"></div>
+    <!-- <div class="post">
+        <div class="content">你好你好你好</div>
+        <div class="bottom">
+            <p class="time">2022-5-31 12:22</p>
+            <div class="buttons">
+                <div class="button edit">编程</div>
+                <div class="button delete">删除</div>
+            </div>
+        </div>
+    </div> -->
+</div>
+<div class="publish" onclick="showPublish()">发布</div>
+<script>
+    function showPublish() {
+        // 显示输入框
+        document.querySelector(".input-dialog").hidden = false
+
+        // 滚动到顶部
+        // this changes the scrolling behavior to "smooth"
+        window.scrollTo({ top: 0, behavior: "smooth" })
+    }
+
+    function cancel() {
+        // 隐藏输入框
+        document.querySelector(".input-dialog").hidden = true
+    }
+
+    async function confirm() {
+        // 发布内容
+
+        // 获取输入框的内容
+        const content = document.querySelector(".input-content").value
+
+        // 发布帖子
+        await createPost(content)
+
+        // 刷新页面数据
+        await refresh()
+
+        // 凿空输入框
+        document.querySelector(".input-content").value = ""
+
+        // 隐藏输入框
+        document.querySelector(".input-dialog").hidden = true
+    }
+
+    function getPosts() {
+        // GET
+        // 获取帖子列表
+        return fetch("https://3yya.com/u/d8cf630cf5f367cc/rest/app/posts")
+    }
+
+    function createPost(content) {
+        // POST
+        // 发布帖子
+
+        let data = {
+            content: content,
+        }
+
+        return fetch("https://3yya.com/u/d8cf630cf5f367cc/rest/app/posts", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json", // 表明内容是 JSON 格式
+            },
+            body: JSON.stringify(data), // 序列化对象
+        })
+    }
+
+    function updatePost(postId, content) {
+        // PUT
+        // 更新帖子
+        let data = {
+            content: content,
+        }
+
+        return fetch(
+            "https://3yya.com/u/d8cf630cf5f367cc/rest/app/posts/" + postId,
+            {
+                method: "PUT",
+                headers: {
+                    "Content-Type": "application/json", // 表明内容是 JSON 格式
+                },
+                body: JSON.stringify(data), // 序列化对象
+            }
+        )
+    }
+
+    function deletePost(postId) {
+        // DELETE
+        // 删除帖子
+
+        return fetch(
+            "https://3yya.com/u/d8cf630cf5f367cc/rest/app/posts/" + postId,
+            {
+                method: "DELETE",
+            }
+        )
+    }
+
+    // async function publish() {
+    //     const content = document.querySelector(".input-content").value
+    //     await createPost(content)
+    //     refresh()
+    // }
+
+    // async function update() {
+    //     const postId = document.querySelector(".post-id").value
+    //     const content = document.querySelector(".input-content").value
+    //     await updatePost(postId, content)
+    //     refresh()
+    // }
+
+    // async function remove() {
+    //     const postId = document.querySelector(".post-id").value
+    //     await deletePost(postId)
+    //     refresh()
+    // }
+
+    async function refresh() {
+        // 更新页面内容
+
+        // 先清空数据
+        document.querySelector(".container .posts").innerHTML = ""
+
+        const response = await getPosts()
+        const result = await response.json()
+        for (const post of result.results) {
+            const postElement = document.createElement("div")
+            postElement.classList.add("post")
+
+            const content = document.createElement("p")
+            content.classList.add("content")
+            content.textContent = post.content
+
+            postElement.append(content)
+
+            const bottom = document.createElement("div")
+            bottom.classList.add("bottom")
+            postElement.append(bottom)
+
+            const time = document.createElement("p")
+            time.classList.add("time")
+            time.textContent = formatTime(post.publish_time)
+
+            bottom.append(time)
+
+            const buttons = document.createElement("div")
+            buttons.classList.add("buttons")
+            bottom.append(buttons)
+
+            const edit = document.createElement("div")
+            edit.classList.add("button")
+            edit.classList.add("edit")
+
+            edit.onclick = function () {
+                // 1. 创建输入框
+                const input = document.createElement("textarea")
+                input.classList.add("input-content")
+                input.value = content.textContent
+
+                // 2. 把文本元素替换成输入框
+                content.replaceWith(input)
+
+                // 3. 创建确认按钮
+                const confirm = document.createElement("div")
+                confirm.classList.add("button")
+                confirm.classList.add("edit")
+                confirm.textContent = "确认"
+
+                confirm.onclick = async function () {
+                    // 1. 更新消息
+                    await updatePost(post.post_id, input.value)
+
+                    // 2. 输入框替换回原来的文本元素
+                    content.textContent = input.value
+                    input.replaceWith(content)
+
+                    // 3. 确认替换回编辑
+                    confirm.replaceWith(edit)
+                }
+
+                // 4. 编辑按钮替换成确认按钮
+                edit.replaceWith(confirm)
+            }
+
+            edit.textContent = "编辑"
+            buttons.append(edit)
+
+            const deleteElement = document.createElement("div")
+            deleteElement.classList.add("button")
+            deleteElement.classList.add("delete")
+            deleteElement.textContent = "删除"
+
+            deleteElement.onclick = async function () {
+                // 1. 调用删除接口
+                await deletePost(post.post_id)
+
+                // 2. 删掉消息元素自身
+                postElement.remove()
+            }
+
+            buttons.append(deleteElement)
+
+            document.querySelector(".container .posts").append(postElement)
+        }
+    }
+
+    function formatTime(timestamp) {
+        const time = new Date(timestamp * 1000)
+        return `${time.getFullYear()}-${
+            time.getMonth() + 1
+        }-${time.getDate()} ${time.getHours()}:${time.getMinutes()}`
+    }
+
+    refresh()
+</script>
+<style>
+    html {
+        background-color: black;
+    }
+
+    .container {
+        width: 450px;
+        margin: 0 auto;
+    }
+    .container p {
+        margin: 0;
+    }
+
+    .container .post {
+        background-color: #0f0f0f;
+        padding: 20px;
+        border-radius: 16px;
+
+        margin: 20px 0;
+    }
+
+    .container .post .content {
+        color: white;
+
+        margin-bottom: 20px;
+    }
+
+    .container .post .bottom {
+        color: white;
+        font-size: 12px;
+
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+
+    .container .post .bottom .buttons {
+        display: flex;
+        /* 子项的间距 */
+        gap: 10px;
+
+        opacity: 0;
+
+        transition: opacity 0.5s;
+    }
+
+    .container .post:hover .bottom .buttons {
+        opacity: 1;
+    }
+
+    .container .post .bottom .button {
+        cursor: pointer;
+
+        padding: 5px 10px;
+        /* 两端变圆 */
+        border-radius: 999999px;
+    }
+
+    .container .post .bottom .buttons .edit {
+        background-color: teal;
+    }
+
+    .container .post .bottom .buttons .delete {
+        background-color: orangered;
+    }
+
+    .container .post .bottom .buttons .confirm {
+        background-color: teal;
+    }
+
+    .publish {
+        width: 60px;
+        height: 60px;
+
+        background-color: teal;
+        color: white;
+
+        font-weight: bold;
+        border-radius: 50%;
+
+        /* 方法一 */
+        /* text-align: center; */
+        /* 字会在一行居中 */
+        /* line-height: 60px; */
+
+        /* 方法二 */
+        display: flex;
+        /* 水平 */
+        justify-content: center;
+        /* 垂直 */
+        align-items: center;
+
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+
+        cursor: pointer;
+    }
+
+    .container .post .time {
+        color: #aaa;
+    }
+
+    .container .post .input-content {
+        width: 100%;
+        height: 100px;
+
+        margin-bottom: 20px;
+
+        outline: none;
+        border: none;
+        background-color: #aaa;
+
+        padding: 10px;
+
+        border-radius: 6px;
+    }
+
+    .container .input-dialog .bottom .buttons {
+        opacity: 1;
+    }
+
+    .container .input-dialog .bottom .buttons .cancel {
+        background-color: gray;
+    }
+
+    .container .input-dialog .bottom {
+        justify-content: flex-end;
+    }
+</style>
