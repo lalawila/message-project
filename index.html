@@ -6,6 +6,10 @@
 
 <div class="container">
     <h1 class="title">三眼鸭的消息墙</h1>
+    <input class="search" type="text" placeholder="搜索" />
+    <button onclick="search()">搜索</button>
+    <button onclick="clean()">清除</button>
+    <p class="empty" hidden>什么消息都没有~</p>
     <div class="post input-dialog" hidden>
         <textarea class="input-content" placeholder="请输入消息"></textarea>
         <div class="bottom">
@@ -29,6 +33,31 @@
 </div>
 <div class="publish" onclick="showPublish()">发布</div>
 <script>
+    // 把查询字符串中的值赋值给搜索框
+    document.querySelector(".search").value = new URL(
+        window.location.href
+    ).searchParams.get("search")
+
+    function search() {
+        const search = document.querySelector(".search").value
+
+        // 浏览器的 url
+        const url = new URL(window.location.href)
+        url.searchParams.set("search", search)
+
+        // 刷新页面，URL 改变
+        window.location.href = url.href
+    }
+
+    function clean() {
+        // 浏览器的 url
+        const url = new URL(window.location.href)
+        url.searchParams.delete("search")
+
+        // 刷新页面，URL 改变
+        window.location.href = url.href
+    }
+
     function showPublish() {
         // 显示输入框
         document.querySelector(".input-dialog").hidden = false
@@ -65,7 +94,21 @@
     function getPosts() {
         // GET
         // 获取帖子列表
-        return fetch("https://3yya.com/u/d8cf630cf5f367cc/rest/app/posts")
+
+        // 把浏览器 url 的查询字符串的 search 值
+        // 给到接口请求的 url 当中
+
+        // 接口的 url
+        const url = new URL(
+            "https://3yya.com/u/d8cf630cf5f367cc/rest/app/posts"
+        )
+
+        const search = new URL(window.location.href).searchParams.get("search")
+        if (search) {
+            url.searchParams.set("search", search)
+        }
+
+        return fetch(url)
     }
 
     function createPost(content) {
@@ -143,6 +186,12 @@
 
         const response = await getPosts()
         const result = await response.json()
+
+        // 没有消息
+        if (result.results.length == 0) {
+            document.querySelector(".empty").hidden = false
+        }
+
         for (const post of result.results) {
             const postElement = document.createElement("div")
             postElement.classList.add("post")
@@ -365,5 +414,14 @@
 
     .container .title {
         color: white;
+    }
+
+    .container .empty {
+        color: #aaa;
+        font-size: 20px;
+
+        margin: 80px 0;
+
+        text-align: center;
     }
 </style>
